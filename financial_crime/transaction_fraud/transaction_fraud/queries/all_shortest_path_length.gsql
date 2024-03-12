@@ -1,0 +1,19 @@
+CREATE DISTRIBUTED QUERY all_shortest_path_length(
+ int max_hops=3) FOR GRAPH Transaction_Fraud { 
+  
+ /*
+ This query determines the shortest path length from each transaction to a fraudulent one, 
+ assessing the proximity to fraud risk. Due to the complexity of tracing paths across 
+ numerous transactions.
+ */
+   
+  rlt = {Merchant.*};
+  //rlt = SELECT s FROM Payment_Transaction:s LIMIT 10;
+
+  rlt = SELECT s 
+        FROM rlt:s 
+        POST-ACCUM mer_shortest_path_length(max_hops,s);
+  
+
+  
+}

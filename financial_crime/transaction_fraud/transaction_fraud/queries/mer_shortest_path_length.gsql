@@ -1,0 +1,39 @@
+CREATE QUERY mer_shortest_path_length(
+  int max_hops=5,
+  VERTEX<Merchant> ver) FOR GRAPH Transaction_Fraud RETURNS(INT){ 
+ 
+  OrAccum @or_visited;
+  MinAccum<INT> @path_len;
+  SetAccum<VERTEX> @@target_vertices;
+  MinAccum<INT> @@shortest_path_length;   
+    seed={ver};
+    start = SELECT t
+        FROM seed:s -(Merchant_Receive_Transaction:e)- Payment_Transaction:t
+        ACCUM IF t.is_fraud ==1 THEN 
+                   @@shortest_path_length +=1 END
+        POST-ACCUM t.@path_len =1,
+                   t.@or_visited += TRUE
+        ;
+    
+  IF @@shortest_path_length != 1 THEN  
+    WHILE (start.size() > 0) LIMIT max_hops DO
+      start = SELECT tgt 
+              FROM start:s -((Merchant_Receive_Transaction|Card_Send_Transaction):e1)- :c2
+                  -((Merchant_Receive_Transaction|Card_Send_Transaction):e2)- Payment_Transaction:tgt
+              WHERE tgt.@or_visited == FALSE
+              ACCUM 
+                  tgt.@path_len += s.@path_len + 2,
+                  IF tgt.is_fraud==1 THEN 
+                    @@shortest_path_length += s.@path_len + 2
+                  END
+              POST-ACCUM 
+                  tgt.@or_visited += TRUE;
+  END;
+  END;
+  rlt = SELECT s 
+        FROM seed:s -(Merchant_Receive_Transaction:e)- Payment_Transaction:t
+        POST-ACCUM 
+        
+        t.setAttr("shortest_path_length", @@shortest_path_length) ;  
+  RETURN @@shortest_path_length; 
+}

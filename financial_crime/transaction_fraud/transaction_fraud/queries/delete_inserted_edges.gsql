@@ -1,0 +1,12 @@
+CREATE DISTRIBUTED QUERY delete_inserted_edges(
+ ) FOR GRAPH Transaction_Fraud { 
+ 
+ // delete inserted edges
+  rlt = SELECT s 
+      FROM (Merchant|Card):s -((Merchant_Merchant|Card_Card):e)- (Merchant|Card):t
+      ACCUM delete(e)
+     // POST-ACCUM delete(s)
+  ;  
+    
+  PRINT "delete_data works!" AS Status; 
+}

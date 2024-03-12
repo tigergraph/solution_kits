@@ -1,0 +1,73 @@
+CREATE DISTRIBUTED QUERY card_merchant_max_txn_count_in_interval(
+  INT time_interval = 5) FOR GRAPH Transaction_Fraud { 
+  /*
+  Find the max number of transactions made to the same merchant within a given interval (int minutes) for each account
+  */ 
+  
+  TYPEDEF TUPLE<datetime date> date_tuple;
+  
+  // Stores a list of transaction dates to each merchant, for a specific account.
+  MapAccum<STRING, ListAccum<date_tuple>> @dates;
+  
+  MinAccum<STRING> @merchant_id;
+
+  // Heap, list, and max accum are auxilary data structures
+  HeapAccum<date_tuple>(1000, date ASC) @heap;
+  ListAccum<datetime> @list;
+  MaxAccum<int> @max = 1;
+  
+ // FILE f (path);
+//  f.println("id", "max_transactions_in_interval");
+  
+  
+  // Store merchant id on each transaction vertex
+  Merchants = SELECT m
+              FROM Payment_Transaction:t-(Merchant_Receive_Transaction:e)-Merchant:m
+              ACCUM t.@merchant_id += m.id;
+  
+  
+  Start = SELECT s
+          FROM Card:s-(Card_Send_Transaction:e)-Payment_Transaction:t
+          ACCUM
+            // Collect all dates by merchant id
+            s.@dates += (t.@merchant_id -> date_tuple(t.transaction_time))
+          POST-ACCUM
+            FOREACH (key, list) IN s.@dates DO
+              // For each merchant, first load the dates into a heap to sort the payments
+              s.@heap.clear(),
+              s.@list.clear(),
+              FOREACH p IN list DO
+                s.@heap += p
+              END,
+              FOREACH p IN s.@heap DO
+                s.@list += p.date
+              END,
+  
+              datetime start_date = s.@heap.pop().date,
+              int start_index = 0,
+              datetime curr_date = start_date,
+              int occurrences = 0,
+              int diff_minutes = 0,
+              WHILE diff_minutes > time_interval OR s.@heap.size() > 0 DO
+                IF diff_minutes > time_interval THEN
+                  start_index = start_index + 1,
+                  curr_date = s.@list.get(start_index),
+                  s.@max += occurrences,
+                  occurrences = occurrences - 1
+                ELSE
+                  occurrences = occurrences + 1,
+                  curr_date = s.@heap.pop().date
+                END,
+                s.@max += occurrences,
+                diff_minutes = datetime_diff(curr_date, start_date) / 60
+              END
+            END
+           // f.println(s.id, s.@max)
+    ;
+    
+     //set Payment_Transaction feature attributes
+    rlt = SELECT s 
+      FROM Card:s -(Card_Send_Transaction)- Payment_Transaction:t
+      ACCUM t.@max = s.@max  
+      Post-ACCUM t.setAttr("max_txn_cnt_interval", t.@max);
+}

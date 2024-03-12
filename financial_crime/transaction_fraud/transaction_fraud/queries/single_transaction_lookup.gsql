@@ -1,0 +1,18 @@
+CREATE DISTRIBUTED QUERY single_transaction_lookup(
+  Vertex<Payment_Transaction> ver ) FOR GRAPH Transaction_Fraud { 
+// sample card vertex: 031413bdac960418dbd19b60aaca0b98
+/**
+   * Feature:
+   *   This query returns the detailed attributes of a single Payment_Transaction vertex. 
+   *
+   * Parameters:
+   *   - Vertex<Payment_Transaction> ver specifies a single input Vertex
+   
+   * Output:
+   *  the query prints the results directly to the console.
+   
+   */
+  rlt = {ver};
+  PRINT rlt;
+ 
+}

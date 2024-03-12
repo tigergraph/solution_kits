@@ -1,0 +1,42 @@
+CREATE QUERY community_size() FOR GRAPH Transaction_Fraud { 
+  
+ /**
+   * Description: The query counts the component size of each Community and update 
+   *   the result size attribute for each party.
+   */ 
+  MapAccum<INT, SumAccum<INT>> @@card_component_count,@@merchant_component_count;
+  MinAccum<INT> @c_size;
+  res = SELECT s 
+    FROM Card:s 
+    POST-ACCUM @@card_component_count += (s.c_id -> 1);
+  
+  res = SELECT s 
+    FROM Card:s 
+    POST-ACCUM 
+      INT tmp1 = @@card_component_count.get(s.c_id),
+      s.@c_size = tmp1,
+      s.setAttr("c_size", tmp1);
+  
+  res = SELECT s 
+    FROM Card:s -(Card_Send_Transaction:e)- Payment_Transaction:t 
+    ACCUM t.@c_size += s.@c_size
+    POST-ACCUM t.setAttr("cd_com_size", t.@c_size);
+  
+  
+  
+  res = SELECT s 
+    FROM Merchant:s 
+    POST-ACCUM @@merchant_component_count += (s.c_id -> 1);
+  
+  res = SELECT s 
+    FROM Merchant:s 
+    POST-ACCUM 
+      INT tmp2 = @@merchant_component_count.get(s.c_id),
+      s.@c_size = tmp2,
+      s.setAttr("c_size", tmp2);
+  
+  res = SELECT s 
+    FROM Merchant:s -(Merchant_Receive_Transaction:e)- Payment_Transaction:t 
+    ACCUM t.@c_size += s.@c_size
+    POST-ACCUM t.setAttr("mer_com_size", t.@c_size);
+}

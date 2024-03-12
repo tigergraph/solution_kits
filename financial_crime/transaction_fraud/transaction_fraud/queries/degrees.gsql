@@ -1,0 +1,25 @@
+CREATE QUERY degrees()  FOR GRAPH Transaction_Fraud {
+  
+  /**
+   * Description: The query calculates the merchant in-degree and card out_degree as features 
+   of Payment_Transaction vertices.
+   *  
+   */ 
+    SumAccum<INT> @in_degree;
+    SumAccum<INT> @out_degree;
+    MinAccum<INT> @in,@out;
+    res1 = 
+        SELECT p 
+        FROM Merchant:p - (:e) - Card:q
+        ACCUM p.@in_degree += 1, q.@out_degree += 1;
+       
+    res2 = 
+        SELECT t 
+        FROM Merchant:m -(Merchant_Receive_Transaction)- Payment_Transaction:t -(Card_Send_Transaction)- Card:c
+        ACCUM t.@in = m.@in_degree, t.@out = c.@out_degree
+        POST-ACCUM t.setAttr("indegree", t.@in),
+                   t.setAttr("outdegree",t.@out);
+    
+    
+    PRINT "Degrees computed Successfully" as Status; 
+}

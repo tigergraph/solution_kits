@@ -1,0 +1,45 @@
+CREATE DISTRIBUTED QUERY number_of_repeated_card(
+  /* Parameters here */) FOR GRAPH Transaction_Fraud { 
+   /*
+  Find the number of repeated cards for each merchant
+  */
+  
+  // Key = sender id, Value = number of transactions from sender
+  MapAccum<INT, INT> @count;
+  MinAccum<INT> @sender_id;
+  SumAccum<INT> @repeated;
+  MinAccum<INT> @cnt;
+  
+ // FILE f (path);
+  //f.println("id", "max_transactions_in_interval");
+  
+  
+  
+  // Store sender id on transaction
+  Transactions =  SELECT t
+                  FROM Card:a-(Card_Send_Transaction:e)-Payment_Transaction:t
+                  ACCUM t.@sender_id += a.card_number;
+  
+  // Store sender ids on merchant vertex and count number of repeated senders
+  Merchants = SELECT m
+            FROM Payment_Transaction:t-(Merchant_Receive_Transaction:e)-Merchant:m
+            ACCUM
+              m.@count += (t.@sender_id -> 1)
+            POST-ACCUM
+            
+              FOREACH (key, value) IN m.@count DO
+                IF value >= 2 THEN
+                  m.@repeated += 1
+                END
+              END
+              
+              //f.println(m.id, repeated)
+    ;
+    
+     //set Payment_Transaction feature attributes
+    rlt = SELECT s 
+      FROM Merchant:s -(Merchant_Receive_Transaction)- Payment_Transaction:t
+      ACCUM t.@cnt = s.@repeated  
+      Post-ACCUM t.setAttr("cnt_repeated_card", t.@cnt);
+    PRINT rlt;
+}

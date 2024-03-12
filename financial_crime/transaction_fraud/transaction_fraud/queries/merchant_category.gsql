@@ -1,0 +1,14 @@
+CREATE DISTRIBUTED QUERY merchant_category(/* Parameters here */) FOR GRAPH Transaction_Fraud { 
+  /*
+  This query assigns the merchant's category to the 'feature' attribute of linked Payment_Transaction 
+  vertices, updating transaction data with merchant category information
+  */
+  
+  MinAccum<STRING> @mer_cat;
+  rlt = SELECT s 
+    FROM Merchant_Category:s -(Merchant_Assigned)- Merchant:m 
+          -(Merchant_Receive_Transaction)- Payment_Transaction:t
+    ACCUM t.@mer_cat += s.category
+    POST-ACCUM t.setAttr("mer_cat", t.@mer_cat);
+  
+}

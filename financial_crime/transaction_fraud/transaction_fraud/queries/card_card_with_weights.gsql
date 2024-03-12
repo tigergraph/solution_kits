@@ -1,0 +1,35 @@
+CREATE DISTRIBUTED QUERY card_card_with_weights(
+    INT min_edge_weight = 1
+    ) 
+    FOR GRAPH Transaction_Fraud { 
+    /* 
+      "This query establishes card-to-card connections for every pair of cards used for transactions at the same merchant. 
+      It assigns weights to these connections based on the frequency of transactions involving the common card pair at each merchant. 
+      Following this, a weighted Personalized PageRank algorithm will be executed on the card-to-card network."
+    */
+    SetAccum<VERTEX<Card>> @cards;
+    MapAccum<VERTEX<Card>, INT> @edge_weight;
+   
+    // Collect all Cards on the Merchant
+    cards = SELECT c FROM Merchant:m- (Has_Interaction_With_Merchant:e) - Card:c
+                ACCUM m.@cards+=c;
+   
+
+    temp = SELECT c FROM cards:c -(Has_Interaction_With_Merchant:e)- Merchant:m
+            ACCUM
+              FOREACH cd IN m.@cards DO
+                IF getvid(c) < getvid(cd) THEN
+                  c.@edge_weight += (cd -> 1)
+                END
+              END;
+    
+
+    temp = SELECT c FROM cards:c
+            POST-ACCUM
+              FOREACH (cd, w) IN c.@edge_weight DO
+                IF w >= min_edge_weight THEN                 // Insert edge only if the weight is >= min_edge_weight
+                    INSERT INTO Card_Card VALUES (c, cd, w)
+                END
+              END;
+    PRINT "Inserted " AS Status;
+    }

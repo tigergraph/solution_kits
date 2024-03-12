@@ -1,0 +1,46 @@
+CREATE DISTRIBUTED QUERY community_transaction_count(
+//STRING file_path = "/home/tigergraph/gsql_output/community_count_transaction.csv",
+//bool save_csv=false, 
+  STRING community_type = "Merchant", //change to "Card" when run query on Card Community
+  STRING result_attribute = "com_mer_txn_cnt", //change to "com_cd_txn_cnt" when run query on Card Community
+  bool print_results=false
+) FOR GRAPH Transaction_Fraud { 
+ /**
+   * Feature:
+   *   This query counts the total number of transactions for community. 
+   *
+   * Parameters:
+   *   - file_path: Specifies the path to the output CSV file where the results will be saved if `save_csv` is true.
+   *   - save_csv: A boolean parameter that determines whether the results are saved to a CSV file at `file_path`.
+   *   - print_results: A boolean parameter that controls whether the results are printed to the console.
+   *
+   * Output:
+   *   Depending on the boolean flags provided:
+   *   - If `save_csv` is true, the query outputs a CSV file at `file_path` 
+   *   - If `print_results` is true, the query prints the results directly to the console.
+   */
+ 
+  SetAccum<VERTEX> @txn_set;
+  MaxAccum<INT> @txn_cnt;
+  //FILE output_file(file_path);
+  
+  community = 
+    SELECT c
+    FROM  Community:c -(Has_Community:e1)- community_type -(:e2)-  Payment_Transaction:t 
+    ACCUM c.@txn_set += t;
+  
+  community = 
+    SELECT c
+    FROM  Community:c -(Has_Community:e1)- community_type -(:e2)-  Payment_Transaction:t 
+    ACCUM t.@txn_cnt += c.@txn_set.size()
+    POST-ACCUM t.setAttr(result_attribute,t.@txn_cnt);
+  
+   IF print_results == TRUE THEN
+   PRINT community[community.@txn_set.size()]; 
+   END;
+  /*
+  IF save_csv == TRUE THEN
+  PRINT community.@count.size() TO_CSV output_file;
+  END;
+  */
+}

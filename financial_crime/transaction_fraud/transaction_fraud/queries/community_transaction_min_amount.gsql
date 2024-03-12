@@ -1,0 +1,49 @@
+CREATE DISTRIBUTED QUERY community_transaction_min_amount(
+//STRING file_path = "/home/tigergraph/gsql_output/community_count_transaction.csv",
+//bool save_csv=false, 
+  STRING community_type = "Merchant", //change to "Card" when run query on Card Community
+  STRING result_attribute = "com_mer_txn_min_amt", //change to "com_cd_txn_min_amt" when run query on Card Community
+  bool print_results=false
+) FOR GRAPH Transaction_Fraud { 
+ /**
+   * Feature:
+   *   This query counts the minimum amount of transactions for community. 
+   *
+   * Parameters:
+   *   - file_path: Specifies the path to the output CSV file where the results will be saved if `save_csv` is true.
+   *   - save_csv: A boolean parameter that determines whether the results are saved to a CSV file at `file_path`.
+   *   - print_results: A boolean parameter that controls whether the results are printed to the console.
+   *
+   * Output:
+   *   Depending on the boolean flags provided:
+   *   - If `save_csv` is true, the query outputs a CSV file at `file_path` 
+   *   - If `print_results` is true, the query prints the results directly to the console.
+   */
+ 
+  MinAccum<FLOAT> @txn_min_amount;
+  //FILE output_file(file_path);
+  MinAccum<FLOAT> @txn_amt;
+  MapAccum<STRING,MinAccum<Float>> @txn_map;
+  
+   community = 
+    SELECT c
+    FROM  Community:c -(Has_Community:e1)- community_type -(:e2)-  Payment_Transaction:t 
+    ACCUM c.@txn_map += (t.id -> t.amount)
+    POST-ACCUM FOREACH (tid,amount) in c.@txn_map DO
+    c.@txn_amt += amount END;
+  
+  community = 
+    SELECT c
+    FROM  Community:c -(Has_Community:e1)- community_type -(:e2)-  Payment_Transaction:t 
+    ACCUM t.@txn_min_amount += c.@txn_amt
+    POST-ACCUM t.setAttr(result_attribute,t.@txn_min_amount);
+  
+   IF print_results == TRUE THEN
+   PRINT community[community.@txn_amt]; 
+   END;
+  /*
+  IF save_csv == TRUE THEN
+  PRINT community.@count.size() TO_CSV output_file;
+  END;
+  */
+}

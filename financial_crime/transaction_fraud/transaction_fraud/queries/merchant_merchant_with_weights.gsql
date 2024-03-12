@@ -1,0 +1,35 @@
+CREATE DISTRIBUTED QUERY merchant_merchant_with_weights(
+    INT min_edge_weight = 1
+    ) 
+    FOR GRAPH Transaction_Fraud { 
+    /* 
+      This query creates a merchant-to-merchant edges for every pair of merchants where purchases have been made using the same card. 
+      It then assigns weights to these connections based on the frequency of transactions involving the common merchant 
+      pair across all cards. Weighted Personalized PageRank algorithm will be applied to this merchant-to-merchant network.
+    */
+    SetAccum<VERTEX<Merchant>> @merchants;
+    MapAccum<VERTEX<Merchant>, INT> @edge_weight;
+    Cards = {Card.*};
+    // Collect all Merchants on the Card
+    merchants = SELECT m FROM Cards:c- (Has_Interaction_With_Merchant:e) - Merchant:m
+                ACCUM c.@merchants+=m;
+   
+
+    temp = SELECT m FROM merchants:m -(Has_Interaction_With_Merchant:e)- Card:c
+            ACCUM
+              FOREACH merc IN c.@merchants DO
+                IF getvid(m) < getvid(merc) THEN
+                  m.@edge_weight += (merc -> 1)
+                END
+              END;
+    
+
+    temp = SELECT m FROM merchants:m
+            POST-ACCUM
+              FOREACH (merc, w) IN m.@edge_weight DO
+                IF w >= min_edge_weight THEN                 // Insert edge only if the weight is >= min_edge_weight
+                    INSERT INTO Merchant_Merchant VALUES (m, merc, w)
+                END
+              END;
+    PRINT "Inserted " AS Status;
+    }

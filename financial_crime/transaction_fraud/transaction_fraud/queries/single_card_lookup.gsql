@@ -1,0 +1,18 @@
+CREATE DISTRIBUTED QUERY single_card_lookup(
+  Vertex<Card> ver ) FOR GRAPH Transaction_Fraud { 
+// sample card vertex: 4512828414983801773
+/**
+   * Feature:
+   *   This query returns the detailed attributes of a single Card vertex. 
+   *
+   * Parameters:
+   *   - Vertex<Card> ver specifies a single input Vertex
+   
+   * Output:
+   *  the query prints the results directly to the console.
+   
+   */
+  rlt = {ver};
+  PRINT rlt;
+ 
+}
