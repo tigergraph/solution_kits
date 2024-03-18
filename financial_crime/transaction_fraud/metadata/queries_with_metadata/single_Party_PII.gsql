@@ -1,0 +1,61 @@
+CREATE QUERY single_Party_PII(
+  Vertex<Party> ver ) FOR GRAPH Transaction_Fraud { 
+// sample party VERTEX: 213137721090747
+/**
+   * Feature:
+   *   This query returns the PII attributes of a single Party vertex. 
+   *
+   * Parameters:
+   *   - Vertex<Party> ver specifies a single input Vertex
+   
+   * Output:
+   *  the query prints the results directly to the console.
+   
+   */
+    SetAccum<STRING> @@edge_type_set;
+    @@edge_type_set = (
+    "Has_Address",
+    "Has_Full_Name",
+    "Has_Phone",
+    "Has_DOB",
+    "Has_Email",
+    "Has_ID",
+    "Has_Device",
+    "Has_IP"
+  );
+  MinAccum<Vertex> @address, @full_name, @phone,@dob,@email,@ids,@device,@ips;
+    
+    rlt = {ver};
+    rlt = SELECT s 
+      FROM rlt:s -(@@edge_type_set:e)- :t 
+    ACCUM 
+      Case e.type 
+        WHEN "Has_Address" THEN
+              s.@address += t
+        WHEN "Has_Full_Name" THEN
+              s.@full_name += t  
+        WHEN "Has_Phone" THEN
+              s.@phone += t  
+        WHEN "Has_DOB" THEN
+              s.@dob += t
+        WHEN "Has_Email" THEN
+              s.@email += t  
+        WHEN "Has_ID" THEN
+              s.@ids += t 
+        WHEN "Has_Device" THEN
+              s.@device += t  
+        WHEN "Has_IP" THEN
+              s.@ips += t  
+    END;                     
+  PRINT rlt[
+    rlt.@address AS Address,
+    rlt.@full_name AS Full_Name,
+    rlt.@phone AS Phone, 
+    rlt.@dob AS DOB,
+    rlt.@email AS Email,
+    rlt.@ids AS ID,
+    rlt.@device AS Device,
+    rlt.@ips AS IP
+    ];
+ 
+}

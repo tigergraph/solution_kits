@@ -1,6 +1,6 @@
-CREATE DISTRIBUTED QUERY single_merchant_lookup(
+CREATE QUERY single_merchant_lookup(
   Vertex<Merchant> ver ) FOR GRAPH Transaction_Fraud { 
-// sample card vertex: fraud_McDermott, Osinski and Morar
+// sample card vertex: fraud_Roberts-Beahan
 /**
    * Feature:
    *   This query returns the detailed attributes of a single Merchant vertex. 

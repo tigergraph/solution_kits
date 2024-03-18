@@ -1,0 +1,96 @@
+{
+    "queries": [
+      {
+        "function_header": "card_has_single_large_transactions",
+        "description": "This query detects and returns all the cards that has single transaction with amount over m within specified time period",
+        "docstring": "This query identifies and retrieves all card numbers that have recorded a single transaction exceeding a specified amount m within a certain time frame. It is used for flagging potentially fraudulent activity by highlighting unusually large transactions that could indicate unauthorized use or testing of the card. Run the query with `runInstalledQuery('card_with_single_large_transaction', params={'min_createTime': 'INSERT_MIN_CREATETIME_HERE', 'max_createTime': 'INSERT_MAX_CREATETIME_HERE', 'm' : 'INSERT_m_HERE' })` min_createTime defaults to 2020-01-01. max_createTime defaults to 2024-01-01. m defualts to 10000",
+        "param_types": {
+            "min_createTime" : "datetime",
+            "max_createTime" : "datetime",
+            "m" : "double"
+        }
+      },
+      {
+        "function_header": "card_has_frequent_transactions",
+        "description": "This query detects and returns all the cards that has more than k transactions within specified time period",
+        "docstring": "This query identifies and retrieves all card numbers that have conducted more than k transactions within a specified time period. It is used to detect potential fraud by pinpointing cards with unusually high transaction volumes, which may suggest stolen card details being exploited or other fraudulent behaviors. Run the query with `runInstalledQuery('card_has_frequent_transactions', params={'min_createTime': 'INSERT_MIN_CREATETIME_HERE', 'max_createTime': 'INSERT_MAX_CREATETIME_HERE', 'freq' : 'INSERT_FREQ_HERE' })` min_createTime defaults to 2019-01-06. max_createTime defaults to 2022-01-08. freq defualts to 3000",
+        "param_types": {
+            "min_createTime" : "datetime",
+            "max_createTime" : "datetime",
+            "freq" : "int"
+        }
+      },
+      {
+        "function_header": "card_has_large_total_amount",
+        "description": "This query detects and returns all the cards whose total transaction amount is over m dollars within specified time period",
+        "docstring": "This query identifies and retrieves all card numbers whose total transaction amount exceeds m dollars within a specified time period. It is used for identifying cards that may be involved in fraudulent activities by tracking the aggregate spending pattern, which, if unusually high, could indicate misuse or unauthorized transactions. Run the query with `runInstalledQuery('card_has_large_total_amount', params={'min_createTime': 'INSERT_MIN_CREATETIME_HERE', 'max_createTime': 'INSERT_MAX_CREATETIME_HERE', 'm' : 'INSERT_m_HERE' })` min_createTime defaults to 2000-01-01. max_createTime defaults to 2024-01-01. m defualts to 200000",
+        "param_types": {
+            "min_createTime" : "datetime",
+            "max_createTime" : "datetime",
+            "m" : "double"
+        }
+      },
+      {
+        "function_header": "sinlge_card_lookup",
+        "description": "This query returns the detailed attributes of a single Card vertex. ",
+        "docstring": "This query retrieves the detailed attributes associated with a single Card vertex. It is used for a thorough examination of a specific card's details, aiding in fraud investigation and risk assessment by providing in-depth insight into the card's attributes and usage patterns. Run the query with `runInstalledQuery('sinlge_card_lookup', params={'ver': 'INSERT_VERTEX_HERE' })`",
+        "param_types": {
+            "ver" : "vertex"
+        }
+      },
+      {
+        "function_header": "single_transaction_lookup",
+        "description": "This query returns the detailed attributes of a single Transaction vertex. ",
+        "docstring": "This query retrieves the comprehensive attributes of a single Transaction vertex, including all features such as transaction amount, date, graph algoarithm features and aggregated features required for downstream machine learning models. It is used to gather detailed information on individual transactions, facilitating the development and refinement of ML models aimed at detecting fraudulent activity by providing a rich dataset for analysis and model training. Run the query with `runInstalledQuery('single_transaction_lookup', params={'ver': 'INSERT_VERTEX_HERE' })`",
+        "param_types": {
+            "ver" : "vertex"
+        }
+      },
+      {
+        "function_header": "single_merchant_lookup",
+        "description": "This query returns the detailed attributes of a single Merchant vertex. ",
+        "docstring": "This query retrieves the detailed attributes associated with a single Merchant vertex. It is used to analyze the merchant's profile and transaction behaviors, which can help in assessing risk levels and identifying patterns indicative of fraudulent activities or compromised merchant accounts. Run the query with `runInstalledQuery('single_merchant_lookup', params={'ver': 'INSERT_VERTEX_HERE' })`",
+        "param_types": {
+            "ver" : "vertex"
+        }
+      },
+      {
+        "function_header": "single_party_PII",
+        "description": "This query returns the party identification information, such as full_name, dob, email, etc",
+        "docstring": "This query retrieves party identification information, including details like full name, date of birth, email address, and other personal identifiers. It is used for verifying the identity of individuals associated with transactions, which is crucial for enhancing security measures and preventing identity theft or fraud within financial operations. Run the query with `runInstalledQuery('single_Party_PII', params={'ver': 'INSERT_VERTEX_HERE' })`",
+        "param_types": {
+            "ver" : "vertex"
+        }
+      },
+      {
+        "function_header": "merchant_has_single_large_transactions",
+        "description": "This query detects and returns all the cards that has single transaction with amount over m within specified time period",
+        "docstring": "This query identifies and retrieves all merchants that have recorded a single transaction exceeding a specified amount m within a certain time frame. It is used to flag potential fraud or irregular activities by highlighting transactions that are unusually large for a given merchant, which could indicate suspicious or anomalous behavior. Run the query with `runInstalledQuery('merchant_has_single_large_transactions', params={'min_createTime': 'INSERT_MIN_CREATETIME_HERE', 'max_createTime': 'INSERT_MAX_CREATETIME_HERE', 'm' : 'INSERT_m_HERE' })` min_createTime defaults to 2020-01-01. max_createTime defaults to 2024-01-01. m defualts to 10000",
+        "param_types": {
+            "min_createTime" : "datetime",
+            "max_createTime" : "datetime",
+            "m" : "double"
+        }
+      },
+      {
+        "function_header": "merchant_has_frequent_transactions",
+        "description": "This query detects and returns all the merchants that has more than k transactions within specified time period",
+        "docstring": "This query identifies and retrieves all merchants that have processed more than k transactions within a specified time period. It is used to detect potential fraudulent or unusual activity by identifying merchants with an exceptionally high volume of transactions, which may indicate a compromised merchant account or other forms of transactional fraud. Run the query with `runInstalledQuery('merchant_has_frequent_transactions', params={'min_createTime': 'INSERT_MIN_CREATETIME_HERE', 'max_createTime': 'INSERT_MAX_CREATETIME_HERE', 'freq' : 'INSERT_FREQ_HERE' })` min_createTime defaults to 2019-01-06. max_createTime defaults to 2022-01-08. freq defualts to 3000",
+        "param_types": {
+            "min_createTime" : "datetime",
+            "max_createTime" : "datetime",
+            "freq" : "int"
+        }
+      },
+      {
+        "function_header": "merchant_has_large_total_amount",
+        "description": "This query detects and returns all the merchants whose total transaction amount is over m dollars within specified time period",
+        "docstring": "This query identifies and retrieves all merchants whose total transaction amount exceeds m dollars within a specified time period. It is used for detecting potential fraudulent or unusual business activity by highlighting merchants with exceptionally high total sales, which could indicate fraudulent transactions or money laundering activities. Run the query with `runInstalledQuery('merchant_has_large_total_amount', params={'min_createTime': 'INSERT_MIN_CREATETIME_HERE', 'max_createTime': 'INSERT_MAX_CREATETIME_HERE', 'm' : 'INSERT_m_HERE' })` min_createTime defaults to 2000-01-01. max_createTime defaults to 2024-01-01. m defualts to 200000",
+        "param_types": {
+            "min_createTime" : "datetime",
+            "max_createTime" : "datetime",
+            "m" : "double"
+        }
+      }
+    ] 
+  }
