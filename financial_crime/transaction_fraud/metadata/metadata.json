@@ -33,7 +33,7 @@
       {
         "function_header": "single_card_lookup",
         "description": "This query returns the detailed attributes of a single Card vertex. ",
-        "docstring": "This query retrieves the detailed attributes associated with a single Card vertex. It is used for a thorough examination of a specific card's details, aiding in fraud investigation and risk assessment by providing in-depth insight into the card's attributes and usage patterns. Run the query with `runInstalledQuery('sinlge_card_lookup', params={'ver': 'INSERT_VERTEX_HERE' })`",
+        "docstring": "This query retrieves the detailed attributes associated with a single Card vertex. It is used for a thorough examination of a specific card's details, aiding in fraud investigation and risk assessment by providing in-depth insight into the card's attributes and usage patterns. Run the query with `runInstalledQuery('single_card_lookup', params={'ver': 'INSERT_VERTEX_HERE' })`",
         "param_types": {
             "ver" : "vertex"
         }
