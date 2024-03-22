@@ -1,1 +1,201 @@
+CREATE QUERY kmeans(
+  STRING v_type,
+  SET<STRING> attr_set,
+  STRING distance_type="EUCLIDEAN",
+  INT min_cluster_count,
+  INT max_cluster_count,
+  INT cluster_inc=1,
+  INT random_iter_count,
+  INT conv_iter_limit=100,
+  FLOAT conv_threshold=0.1,
+  INT random_seed=42,
+  BOOL use_custom_timestamp=FALSE,
+  DATETIME custom_timestamp=to_datetime("1970-01-01")) {
+  TYPEDEF TUPLE<FLOAT distance, VERTEX centroid> Centroid_Distance;
+  TYPEDEF TUPLE<FLOAT sse_delta, INT cluster_count, INT iter> Cluster_Count_Tuple;
+  HeapAccum<Centroid_Distance> (1, distance ASC) @centroid_distance_heap;
+  MaxAccum<Cluster_Count_Tuple> @@max_sse_delta;
+  MapAccum<INT, MinAccum<Centroid_Distance>> @cluster_assignment;
+  MapAccum<VERTEX, MapAccum<INT, AvgAccum>> @@centroid_write_values;
+  MapAccum<VERTEX, ListAccum<FLOAT>> @@centroid_read_values;
+  MapAccum<INT, MaxAccum<VERTEX>> @@cluster_rep_verts;
 
+  GroupByAccum<INT cluster_count, INT iter, INT centroid_id, ListAccum<FLOAT> centroid_values> @@final_centroid_values;
+
+  MapAccum<INT, MinAccum<FLOAT>> @@cluster_count_sse_map;
+
+  ListAccum<FLOAT> @attr_values;
+  SumAccum<FLOAT> @random_init, @@sse, @value, @speed_limit;
+  AvgAccum @avg_value;
+  SumAccum<INT> @random_base;
+  MaxAccum<INT> @cluster_id;
+  MaxAccum<FLOAT> @@max_attr_value;
+  MinAccum<FLOAT> @@min_attr_value;
+    
+  DATETIME cluster_timestamp = now();
+  IF use_custom_timestamp == TRUE THEN
+    cluster_timestamp = custom_timestamp;
+  END;
+
+  INT _mod, _mult, _inc;
+  _mod = pow(2, 31)-1;
+  _mult = 1664525;
+  _inc = 1013904223;
+
+  verts = {v_type};
+  INT feature_count = attr_set.size();
+
+  MapAccum<INT, MaxAccum<STRING>> @@attr_map;
+  
+  DATETIME timestamp = now();
+
+  JSONARRAY arr;
+  FOREACH attr IN attr_set DO
+    arr = parse_json_array(attr);
+    @@attr_map += (arr.getInt(0) -> arr.getString(1));
+  END;
+
+  STRING attr_name;
+  FOREACH attr_idx IN RANGE[0, attr_set.size()-1] DO
+    attr_name = @@attr_map.get(attr_idx);
+    PRINT attr_name;
+    verts =
+      SELECT s FROM verts:s
+      ACCUM
+        @@max_attr_value += s.attr_map.get(attr_name),
+        @@min_attr_value += s.attr_map.get(attr_name)
+      POST-ACCUM
+        FLOAT denominator = @@max_attr_value - @@min_attr_value,
+        IF denominator == 0 THEN
+          denominator = 1
+        END,
+        s.@attr_values += (s.attr_map.get(attr_name)-@@min_attr_value) / denominator,
+        s.@random_base = (((getvid(s)+_inc)+_mult*random_seed) % _mod),
+        s.@random_init = s.@random_base / (_mod * 1.0);
+    @@min_attr_value = GSQL_INT_MAX;
+    @@max_attr_value = GSQL_INT_MIN;
+  END;
+
+  // if two clusters converge, merge them and just stop there.
+  FLOAT merge_threshold=0.01;
+  GroupByAccum<INT cluster_count, INT iter, INT centroid_id, MaxAccum<INT> merge_centroid_id> @@merge_map;
+  SumAccum<INT> @@terminate_count;
+  INT terminate_threshold = 5;
+
+  FOREACH cluster_count IN RANGE[min_cluster_count, max_cluster_count].STEP(cluster_inc) DO
+    IF @@terminate_count >= terminate_threshold THEN
+      BREAK;
+    END;
+    FOREACH iter IN RANGE[0, random_iter_count-1] DO
+      IF @@terminate_count >= terminate_threshold THEN
+        BREAK;
+      END;
+      @@terminate_count = 0;
+      // CENTROID INITIALIZATION
+      centroids =
+        SELECT s FROM verts:s
+        POST-ACCUM
+          s.@random_base = (s.@random_base * _mult + (getvid(s)+_inc)) % _mod,
+          s.@random_init = s.@random_base / (_mod * 1.0)
+        ORDER BY s.@random_init
+        LIMIT cluster_count;
+      centroids =
+        SELECT s FROM centroids:s
+        POST-ACCUM
+          FOREACH i IN RANGE[0, feature_count-1] DO
+            @@centroid_read_values += (s -> s.@attr_values.get(i) + s.@random_init)
+          END;
+
+      // PRINT cluster_count, iter, centroids, @@centroid_read_values;
+      @@sse = 0;
+      FLOAT last_sse = 1;
+      BOOL first_iter = TRUE;
+      // KMEANS ITERATION UNTIL COVNVERGENCE
+      WHILE (abs(@@sse - last_sse) > conv_threshold OR first_iter == TRUE) AND last_sse > @@sse LIMIT conv_iter_limit DO
+        first_iter = FALSE;
+        last_sse = @@sse;
+        @@sse = 0;
+        verts =
+          SELECT s FROM verts:s
+          ACCUM
+            FOREACH (centroid, centroid_values) IN @@centroid_read_values DO
+              // compute distance
+              s.@centroid_distance_heap += Centroid_Distance(tg_similarity_accum(s.@attr_values, centroid_values, distance_type), centroid)
+            END
+          POST-ACCUM
+            FOREACH i IN RANGE[0, feature_count-1] DO
+              @@centroid_write_values += (s.@centroid_distance_heap.top().centroid -> (i -> s.@attr_values.get(i)))
+            END,
+            @@sse += pow(s.@centroid_distance_heap.top().distance, 2);
+        @@centroid_read_values.clear();
+        centroids =
+          SELECT s FROM centroids:s
+          POST-ACCUM
+            FOREACH i IN RANGE[0, feature_count-1] DO
+              @@centroid_read_values += (s -> @@centroid_write_values.get(s).get(i))
+            END;
+        @@centroid_write_values.clear();
+      END;
+      // CLEAN UP
+      centroids =
+        SELECT s FROM centroids:s
+        POST-ACCUM
+          // compare against other centroids
+          // if too close, and self less than other cluster id, add to merge map
+          // for now, even a single overlap results in termination, in the future, we might want to add a threshold for X overlaps
+          BOOL terminate = FALSE,
+          FOREACH (centroid, centroid_values) IN @@centroid_read_values DO
+            IF
+                centroid != s AND
+                getvid(s) < getvid(centroid) AND
+                tg_similarity_accum(@@centroid_read_values.get(s), centroid_values, distance_type) < merge_threshold
+                THEN
+              @@merge_map += (cluster_count, iter, getvid(s) -> getvid(centroid)),
+              @@terminate_count += 1,
+              terminate = TRUE,
+              BREAK
+            END
+          END,
+          IF terminate == FALSE THEN
+            @@final_centroid_values += (cluster_count, iter, getvid(s) -> @@centroid_read_values.get(s))
+          END;
+      @@centroid_read_values.clear();
+      verts =
+        SELECT s FROM verts:s
+        POST-ACCUM
+          s.@cluster_assignment += (cluster_count -> Centroid_Distance(@@sse, s.@centroid_distance_heap.top().centroid)),
+          s.@centroid_distance_heap.clear();
+      @@cluster_count_sse_map += (cluster_count -> @@sse);
+
+      IF (cluster_count - min_cluster_count) > 2*cluster_inc THEN
+        FLOAT prev_sse_delta = @@cluster_count_sse_map.get(cluster_count-(2*cluster_inc)) - @@cluster_count_sse_map.get(cluster_count-(1*cluster_inc));
+        FLOAT next_sse_delta = @@cluster_count_sse_map.get(cluster_count-(1*cluster_inc)) - @@cluster_count_sse_map.get(cluster_count);
+        @@max_sse_delta += Cluster_Count_Tuple(next_sse_delta - prev_sse_delta, cluster_count-(1*cluster_inc), iter);
+      END;
+    END;
+  END;
+
+  rep_verts =
+    SELECT s FROM verts:s
+    ACCUM
+      INT cluster_id = getvid(s.@cluster_assignment.get(@@max_sse_delta.cluster_count).centroid),
+      IF @@merge_map.containsKey(
+      @@max_sse_delta.cluster_count,
+      @@max_sse_delta.iter,
+      cluster_id) THEN
+        cluster_id = @@merge_map.get(@@max_sse_delta.cluster_count, @@max_sse_delta.iter,cluster_id).merge_centroid_id
+      END,
+      s.@cluster_id = cluster_id,
+      @@cluster_rep_verts += (cluster_id -> s)
+    POST-ACCUM
+      INSERT INTO In_Cluster VALUES (s, s.@cluster_id, cluster_timestamp)
+    HAVING
+      @@cluster_rep_verts.get(s.@cluster_id) == s;
+
+  rep_verts =
+    SELECT s FROM rep_verts:s
+    POST-ACCUM
+      INSERT INTO Cluster VALUES (s.@cluster_id, @@final_centroid_values.get(@@max_sse_delta.cluster_count, @@max_sse_delta.iter, s.@cluster_id).centroid_values);
+
+  PRINT "Created Cluster Count:", rep_verts.size();
+}
