@@ -1,0 +1,23 @@
+CREATE DISTRIBUTED QUERY AF_number_of_blocked_accounts_on_same_device(/* Parameters here */) FOR GRAPH Fraudster_Detection { 
+ 
+  /*
+  * Feature:
+   number of distinct mule_accounts using the same device.
+  */
+  
+ SetAccum<VERTEX> @frauds;
+
+  
+  fraud = SELECT s 
+          FROM Account:s WHERE s.is_fraud ==1; 
+  
+  rlt = SELECT pt 
+        FROM Account:s -(Party_Has_Account:e)- Party:pa -(Has_Device:ee)- Device:d-(Has_Device)- Party:pt
+        WHERE pa != pt
+        ACCUM pt.@frauds += pa;
+  
+  PRINT rlt[
+    rlt.@frauds.size() AS Device_Fraudster_Count
+  ];
+   
+}
