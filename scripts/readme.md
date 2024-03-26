@@ -8,6 +8,7 @@ solution name/
     schema.json
     style.json
     application.json
+    queriesDocs.json
     images/
   schema/
     schema.gsql
@@ -25,6 +26,7 @@ solution name/
    - `meta/schema.json` contains the API response from `/api/gsql-server/gsql/schema` for the schema. We need this in advance so we can show the schema in the UI before creating the schema.
    - `meta/style.json` contains the API response from `/api/graph-styles/local/${graphName}` for the style. We need this in advance so we can show the style (the vertex's color and position) in the UI before creating the schema. This file is optional.
    - `meta/application.json` contains the exported insights application configuration. If it exists, we will import the insights application when installing the solution.
+   - `meta/queriesDocs.json` contains description for query. We will send it to copilot when install solution.
    - `meta/icon.png`|`meta/icon.jpg` is the icon of the solution.
    - `meta/images` contains the images to better describe the solution.
 
