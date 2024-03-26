@@ -2,24 +2,20 @@
 
 ```
 solution name/
-  meta
+  meta/
     meta.yml
     icon.png
     schema.json
     style.json
     application.json
-    images
-  schema
+    images/
+  schema/
     schema.gsql
-  queries
-    query
-  data
-    ata.csv
-  loading_job
-    load_data.gsql
-  udf
-  reset
-    reset.gsql
+  queries/
+  data/
+  loading_job/
+  udf/
+  reset/
 ```
 
 1. The top-level folder names, such as `meta` or `schema`, within the solution folder are based on convention and cannot be changed. Only folders containing `meta/meta.yml` are recognized as solutions.
@@ -81,12 +77,12 @@ queries:
 ```
 tigergraph-solution-kits
   list.json
-  financial_crime/transaction_fraud/transaction_fraud
+  financial_crime/transaction_fraud/transaction_fraud/
     meta.json
-    data
-    udf
-    meta
-      images
+    data/
+    udf/
+    meta/
+      images/
       icon.png
       application.json
 ```
