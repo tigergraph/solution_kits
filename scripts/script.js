@@ -111,8 +111,12 @@ async function getSolution(dir) {
   content.metadata.images = await syncFolder(`${dir}/meta/images`, imageCacheControl);
   content.metadata.images.sort();
 
-  const hasApplication = fs.existsSync(`${dir}/meta/application.json`);
-  content.metadata.hasApplication = hasApplication;
+  const hasInsightsApplication = fs.existsSync(`${dir}/meta/application.json`);
+  let insightsApplication = null;
+  if (hasInsightsApplication) {
+    insightsApplication = await syncFile(`${dir}/meta/application.json`);
+  }
+  content.metadata.insightsApplication = insightsApplication;
 
   content.metadata.provider = content.metadata.provider || "TigerGraph";
   content.metadata.algorithms = content.metadata.algorithms || [];
@@ -183,11 +187,6 @@ async function getSolutionDetail(dir, first, last) {
   } catch (error) {}
 
   const hasUDF = fs.existsSync(`${dir}/udf`);
-  const hasApplication = fs.existsSync(`${dir}/meta/application.json`);
-  let application = null;
-  if (hasApplication) {
-    application = await syncFile(`${dir}/meta/application.json`);
-  }
 
   return {
     schema,
@@ -198,7 +197,6 @@ async function getSolutionDetail(dir, first, last) {
     sampleLoadingJob,
     reset,
     hasUDF,
-    application,
   };
 }
 
