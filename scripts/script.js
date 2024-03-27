@@ -24,20 +24,22 @@ const emptyStyleJSON = {
   },
 };
 
-const s3 = new AWS.S3();
 const bucketName = "tigergraph-solution-kits";
+const disableCacheControl = "max-age=0,no-cache,no-store";
+const imageCacheControl = "max-age=86400"; // cache image for  1 day
+
+const s3 = new AWS.S3();
 const commonBucketConfig = {
   Bucket: bucketName,
-  // disable cache
-  CacheControl: "max-age=0,no-cache,no-store",
 };
 
-async function syncFile(file) {
+async function syncFile(file, cacheControl = disableCacheControl) {
   const params = {
     ...commonBucketConfig,
     Key: file,
     Body: fs.readFileSync(file),
     ContentType: mime.getType(path.extname(file)),
+    CacheControl: cacheControl,
   };
 
   let shouldUpload = true;
@@ -74,11 +76,11 @@ async function syncFile(file) {
   return `https://${bucketName}.s3.us-west-1.amazonaws.com/${file}`;
 }
 
-async function syncFolder(folder) {
+async function syncFolder(folder, cacheControl = disableCacheControl) {
   const files = globSync([`${folder}/*`, `${folder}/*/*`]);
   let results = [];
   for (let file of files) {
-    results.push(await syncFile(file));
+    results.push(await syncFile(file, cacheControl));
   }
   return results;
 }
@@ -103,10 +105,10 @@ async function getSolution(dir) {
   }
 
   if (iconPath) {
-    content.metadata.icon = await syncFile(iconPath);
+    content.metadata.icon = await syncFile(iconPath, imageCacheControl);
   }
 
-  content.metadata.images = await syncFolder(`${dir}/meta/images`);
+  content.metadata.images = await syncFolder(`${dir}/meta/images`, imageCacheControl);
   content.metadata.images.sort();
 
   const hasApplication = fs.existsSync(`${dir}/meta/application.json`);
